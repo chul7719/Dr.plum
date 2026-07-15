@@ -1,23 +1,35 @@
 // [기능] 마트 설비 유지보수 매칭 플랫폼 - 데이터 모델
-// 로컬 개발은 SQLite, 운영 전환 시 provider를 "postgresql"로 바꾸고
-// DATABASE_URL만 교체하면 됩니다 (스키마 문법은 대부분 호환됩니다).
+// PostgreSQL(Neon)을 사용합니다. enum을 지원하는 커넥터라 role/status
+// 필드는 아래처럼 실제 `enum`으로 선언해 DB 레벨에서도 허용값을 제한합니다.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// [기능] SQLite는 커넥터 차원에서 enum을 지원하지 않아 String으로 대신하고,
-// 아래 주석으로 허용 값 목록을 문서화합니다. PostgreSQL로 전환할 때는 이
-// 필드들을 실제 `enum`으로 바꿔 DB 레벨 제약을 되살릴 수 있습니다.
-//
-// Role: "MART_MANAGER" | "TECHNICIAN" | "HQ_ADMIN"
-// RequestStatus: "QUOTING" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "PAID"
-// SettlementStatus: "PENDING" | "INVOICED" | "PAID"
+enum Role {
+  MART_MANAGER // 매장 담당자
+  TECHNICIAN   // 협력업체 기사
+  HQ_ADMIN     // 본사 관리자
+}
+
+enum RequestStatus {
+  QUOTING      // 견적(입찰) 대기 - 협력업체들이 가격/도착예정시간을 제안하는 단계
+  ACCEPTED     // 업체 선정 완료 - 아직 기사가 출발 전
+  IN_PROGRESS  // 기사 출발 ~ 현장 수리 중 (세부 단계는 TimelineEvent 개수로 구분)
+  COMPLETED    // 완료보고 제출 (정산 전)
+  PAID         // 정산 완료
+}
+
+enum SettlementStatus {
+  PENDING   // 정산 대기
+  INVOICED  // 청구서 발행
+  PAID      // 지급 완료
+}
 
 // [기능] 다지점/다본사 구조 (README 로드맵 5)
 // 하나의 프랜차이즈 본사가 여러 지점(Store)을 가지는 구조를 표현합니다.
@@ -56,7 +68,7 @@ model User {
   email        String   @unique
   passwordHash String
   name         String
-  role         String // Role: MART_MANAGER | TECHNICIAN | HQ_ADMIN
+  role         Role
 
   // MART_MANAGER 인 경우에만 사용
   store   Store?  @relation(fields: [storeId], references: [id])
@@ -84,7 +96,7 @@ model Request {
   equipmentType String // 예: 냉장 쇼케이스, 공조 설비, POS 단말
   symptom       String
   urgent        Boolean       @default(false)
-  status        String        @default("QUOTING") // RequestStatus: QUOTING | ACCEPTED | IN_PROGRESS | COMPLETED | PAID
+  status        RequestStatus @default(QUOTING)
 
   quotes          Quote[]         @relation("RequestQuotes")
   selectedQuote   Quote?          @relation("SelectedQuote", fields: [selectedQuoteId], references: [id])
@@ -161,7 +173,7 @@ model Settlement {
   commissionRate   Float            @default(0.1) // 플랫폼 수수료율
   commissionAmount Int // 플랫폼 수수료 (원)
   payoutAmount     Int // 협력업체 지급액 (원) = amount - commissionAmount
-  status           String           @default("PENDING") // SettlementStatus: PENDING | INVOICED | PAID
+  status           SettlementStatus @default(PENDING)
   // [기능] 결제/PG 연동 인터페이스 (README 로드맵 4, src/lib/payment.ts)
   // 실제 PG 연동 전까지는 MockPaymentGateway가 채워주는 가짜 거래번호입니다.
   transactionId    String?
