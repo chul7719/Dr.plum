@@ -1,0 +1,170 @@
+// [기능] 마트 설비 유지보수 매칭 플랫폼 - 데이터 모델
+// 로컬 개발은 SQLite, 운영 전환 시 provider를 "postgresql"로 바꾸고
+// DATABASE_URL만 교체하면 됩니다 (스키마 문법은 대부분 호환됩니다).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// [기능] SQLite는 커넥터 차원에서 enum을 지원하지 않아 String으로 대신하고,
+// 아래 주석으로 허용 값 목록을 문서화합니다. PostgreSQL로 전환할 때는 이
+// 필드들을 실제 `enum`으로 바꿔 DB 레벨 제약을 되살릴 수 있습니다.
+//
+// Role: "MART_MANAGER" | "TECHNICIAN" | "HQ_ADMIN"
+// RequestStatus: "QUOTING" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "PAID"
+// SettlementStatus: "PENDING" | "INVOICED" | "PAID"
+
+// [기능] 다지점/다본사 구조 (README 로드맵 5)
+// 하나의 프랜차이즈 본사가 여러 지점(Store)을 가지는 구조를 표현합니다.
+// HQ_ADMIN 계정은 특정 Organization에 소속되고, 대시보드/정산 조회는 항상
+// "내 Organization에 속한 Store"로 범위를 제한합니다 (다른 프랜차이즈 데이터 격리).
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  stores    Store[]
+  admins    User[]
+  createdAt DateTime @default(now())
+}
+
+model Store {
+  id             String       @id @default(cuid())
+  name           String
+  address        String?
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  users          User[]
+  requests       Request[]
+  createdAt      DateTime     @default(now())
+}
+
+model Vendor {
+  id          String   @id @default(cuid())
+  name        String
+  ratingAvg   Float    @default(4.5)
+  technicians User[]
+  quotes      Quote[]
+  createdAt   DateTime @default(now())
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String // Role: MART_MANAGER | TECHNICIAN | HQ_ADMIN
+
+  // MART_MANAGER 인 경우에만 사용
+  store   Store?  @relation(fields: [storeId], references: [id])
+  storeId String?
+
+  // TECHNICIAN 인 경우에만 사용
+  vendor   Vendor? @relation(fields: [vendorId], references: [id])
+  vendorId String?
+
+  // HQ_ADMIN 인 경우에만 사용 (다지점/다본사 구조에서 소속 프랜차이즈 본사 구분)
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+
+  requests  Request[] @relation("RequestedBy")
+  createdAt DateTime  @default(now())
+}
+
+model Request {
+  id            String        @id @default(cuid())
+  store         Store         @relation(fields: [storeId], references: [id])
+  storeId       String
+  requestedBy   User          @relation("RequestedBy", fields: [requestedById], references: [id])
+  requestedById String
+
+  equipmentType String // 예: 냉장 쇼케이스, 공조 설비, POS 단말
+  symptom       String
+  urgent        Boolean       @default(false)
+  status        String        @default("QUOTING") // RequestStatus: QUOTING | ACCEPTED | IN_PROGRESS | COMPLETED | PAID
+
+  quotes          Quote[]         @relation("RequestQuotes")
+  selectedQuote   Quote?          @relation("SelectedQuote", fields: [selectedQuoteId], references: [id])
+  selectedQuoteId String?         @unique
+
+  // [기능] 완료보고 - 협력업체 기사가 작업 완료 시 남기는 조치 내용 + 사진(들)
+  completionNotes String?
+  photos          CompletionPhoto[]
+
+  timelineEvents TimelineEvent[]
+  review         Review?
+  settlement     Settlement?
+
+  createdAt DateTime @default(now())
+}
+
+// [기능] 협력업체 실제 입찰 흐름 (README 로드맵 1)
+// 요청 1건에 여러 협력업체가 각자 가격/도착예정시간을 제안(Quote)하고,
+// 매장 담당자가 그중 하나를 선택합니다. 업체당 요청 1건에 제안은 1개만
+// 유지되도록(재제안 시 갱신) @@unique 제약을 둡니다.
+model Quote {
+  id         String   @id @default(cuid())
+  request    Request  @relation("RequestQuotes", fields: [requestId], references: [id])
+  requestId  String
+  vendor     Vendor   @relation(fields: [vendorId], references: [id])
+  vendorId   String
+  price      Int // 원
+  etaMinutes Int
+  note       String? // 기사가 남기는 제안 메모 (예: "부품 재고 있음, 즉시 출발 가능")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  selectedFor Request? @relation("SelectedQuote")
+
+  @@unique([requestId, vendorId])
+}
+
+model TimelineEvent {
+  id         String   @id @default(cuid())
+  request    Request  @relation(fields: [requestId], references: [id])
+  requestId  String
+  step       String // 요청 접수 / 기사 출발 / 현장 도착·점검 / 수리 완료 / 정산·리뷰
+  occurredAt DateTime @default(now())
+}
+
+// [기능] 사진 업로드 (README 로드맵 2)
+// 완료보고 시 기사가 첨부하는 현장 사진들입니다. 지금은 데모 단계라 base64
+// data URL을 그대로 저장합니다. 실제 서비스로 전환할 때는 dataUrl 대신
+// S3/Cloudflare R2에 업로드한 결과 URL을 저장하도록 이 모델만 바꾸면 됩니다.
+model CompletionPhoto {
+  id        String   @id @default(cuid())
+  request   Request  @relation(fields: [requestId], references: [id])
+  requestId String
+  dataUrl   String
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  request   Request  @relation(fields: [requestId], references: [id])
+  requestId String   @unique
+  stars     Int
+  text      String?
+  recurring Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// 정산: 매장이 지불한 금액 중 플랫폼 수수료와 협력업체 지급액을 분리해 관리합니다.
+model Settlement {
+  id               String           @id @default(cuid())
+  request          Request          @relation(fields: [requestId], references: [id])
+  requestId        String           @unique
+  amount           Int // 매장 결제 금액 (총액)
+  commissionRate   Float            @default(0.1) // 플랫폼 수수료율
+  commissionAmount Int // 플랫폼 수수료 (원)
+  payoutAmount     Int // 협력업체 지급액 (원) = amount - commissionAmount
+  status           String           @default("PENDING") // SettlementStatus: PENDING | INVOICED | PAID
+  // [기능] 결제/PG 연동 인터페이스 (README 로드맵 4, src/lib/payment.ts)
+  // 실제 PG 연동 전까지는 MockPaymentGateway가 채워주는 가짜 거래번호입니다.
+  transactionId    String?
+  paidAt           DateTime?
+  createdAt        DateTime         @default(now())
+}
