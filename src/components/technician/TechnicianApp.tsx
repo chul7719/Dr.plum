@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { MobileHeader } from "@/components/MobileHeader";
-import { fmtWon, fmtArrival } from "@/lib/format";
+import { fmtWon, fmtScheduledAt } from "@/lib/format";
 
 type Quote = {
   id: string;
@@ -141,7 +141,7 @@ export function TechnicianApp() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1 mb-2">{r.symptom}</p>
                 <p className="text-sm font-bold">
-                  {fmtWon(myQuote.price)} · {fmtArrival(myQuote.scheduledAt)}
+                  {fmtWon(myQuote.price)} · {fmtScheduledAt(myQuote.scheduledAt)}
                 </p>
                 <BidCard
                   request={r}

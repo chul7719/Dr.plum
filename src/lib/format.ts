@@ -5,10 +5,20 @@ export function fmtWon(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
 
-// [기능] 기사가 제안한 방문 예정 일시(scheduledAt) 표시 (README 로드맵 3).
+// [기능] 방문 예정 일시(scheduledAt)를 "7월 20일(월) 14:30 방문 예정" 형식으로
+// 그대로 보여줍니다 (24시간제). 기사 앱은 자기가 입력한 값을 그대로 확인하면
+// 되므로 상대 시간 계산 없이 항상 이 형식을 씁니다.
+export function fmtScheduledAt(scheduledAt: Date | string) {
+  const target = new Date(scheduledAt);
+  const dateLabel = target.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+  const timeLabel = target.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${dateLabel} ${timeLabel} 방문 예정`;
+}
+
+// [기능] 매장 담당자용 방문 예정 표시 (README 로드맵 3).
 // 오늘이면 지금 시점 기준 "N분 후 도착 예정"으로 실시간 계산해서 보여주고,
-// 다른 날짜면 기사가 입력한 날짜+시각을 그대로 "7월 20일(월) 14:30 방문 예정"
-// 형식으로 보여줍니다. 견적 비교 목록과 출발 후 실시간 트래킹에 모두 씁니다.
+// 다른 날짜면 fmtScheduledAt과 동일하게 날짜+시각을 그대로 보여줍니다.
+// 견적 비교 목록과 출발 후 실시간 트래킹에 모두 씁니다.
 export function fmtArrival(scheduledAt: Date | string, now: Date = new Date()) {
   const target = new Date(scheduledAt);
   const isToday = target.toDateString() === now.toDateString();
@@ -19,9 +29,7 @@ export function fmtArrival(scheduledAt: Date | string, now: Date = new Date()) {
     return `${diffMin}분 후 도착 예정`;
   }
 
-  const dateLabel = target.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
-  const timeLabel = target.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
-  return `${dateLabel} ${timeLabel} 방문 예정`;
+  return fmtScheduledAt(target);
 }
 
 export const STATUS_LABEL: Record<string, string> = {
