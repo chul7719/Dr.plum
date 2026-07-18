@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { MobileHeader } from "@/components/MobileHeader";
-import { fmtWon, fmtScheduledAt } from "@/lib/format";
+import { fmtWon, fmtScheduledAt, getPhaseLabel } from "@/lib/format";
 
 type Quote = {
   id: string;
@@ -179,7 +179,7 @@ export function TechnicianApp() {
                 <p className="text-sm font-semibold">
                   {r.store.name} · {r.equipmentType}
                 </p>
-                <span className="text-xs font-semibold text-green-700">{r.status === "PAID" ? "정산 완료" : "완료보고 제출"}</span>
+                <span className="text-xs font-semibold text-green-700">{getPhaseLabel(r.status, r.timelineEvents.length)}</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 {r.symptom}
@@ -405,7 +405,7 @@ function ProgressCard({
         <p className="text-sm font-semibold">
           {request.store.name} · {request.equipmentType}
         </p>
-        <span className="text-xs text-gray-500">{request.status === "IN_PROGRESS" ? "수리 중" : "업체 선정"}</span>
+        <span className="text-xs text-gray-500">{getPhaseLabel(request.status, request.timelineEvents.length)}</span>
       </div>
       <p className="text-xs text-gray-500 mb-3">
         {request.symptom}

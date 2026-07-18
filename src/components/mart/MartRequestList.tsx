@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MobileHeader } from "@/components/MobileHeader";
-import { STATUS_LABEL, STATUS_BADGE_CLASS } from "@/lib/format";
+import { STATUS_BADGE_CLASS, getPhaseLabel } from "@/lib/format";
 
 type RequestSummary = {
   id: string;
@@ -14,6 +14,7 @@ type RequestSummary = {
   urgent: boolean;
   status: string;
   store: { name: string };
+  timelineEvents: { step: string }[];
 };
 
 export function MartRequestList() {
@@ -59,7 +60,7 @@ export function MartRequestList() {
               </p>
             </div>
             <span className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_BADGE_CLASS[r.status]}`}>
-              {STATUS_LABEL[r.status]}
+              {getPhaseLabel(r.status, r.timelineEvents.length)}
             </span>
           </Link>
         ))}

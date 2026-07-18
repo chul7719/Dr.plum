@@ -32,11 +32,15 @@ export function fmtArrival(scheduledAt: Date | string, now: Date = new Date()) {
   return fmtScheduledAt(target);
 }
 
+// [기능] 요청 상태(Request.status) 5단계의 기본 라벨.
+// IN_PROGRESS는 "기사 이동중"과 "현장 점검중" 두 세부 국면을 모두 포함하는
+// 값이라 목록처럼 타임라인 정보가 없는 곳에서만 이 라벨(진행중)을 씁니다.
+// 타임라인 정보가 있는 곳은 항상 getPhaseLabel()을 쓰세요.
 export const STATUS_LABEL: Record<string, string> = {
   QUOTING: "견적 대기",
   ACCEPTED: "업체 선정",
   IN_PROGRESS: "진행중",
-  COMPLETED: "완료 대기",
+  COMPLETED: "점검완료",
   PAID: "정산 완료"
 };
 
@@ -49,3 +53,18 @@ export const STATUS_BADGE_CLASS: Record<string, string> = {
 };
 
 export const TIMELINE_STEPS = ["요청 접수", "기사 출발", "현장 도착·점검", "수리 완료", "정산·리뷰"];
+
+// [기능] 매장 목록/본사 대시보드/기사 앱이 전부 같은 문구를 쓰도록 하는
+// 단일 소스 - 상태(status) 문구를 계산하는 곳은 이 함수 하나로 통일합니다.
+// status만으로는 IN_PROGRESS 구간이 "기사 이동중"인지 "현장 점검중"인지
+// 구분이 안 되므로, 지금까지 쌓인 TimelineEvent 개수(timelineEventCount)를
+// 같이 봐서 판단합니다.
+//   1건(요청 접수) - QUOTING/ACCEPTED 단계
+//   2건(+ 기사 출발) - 기사이동중
+//   3건 이상(+ 현장 도착) - 현장점검중
+export function getPhaseLabel(status: string, timelineEventCount: number): string {
+  if (status === "IN_PROGRESS") {
+    return timelineEventCount >= 3 ? "현장점검중" : "기사이동중";
+  }
+  return STATUS_LABEL[status] ?? status;
+}

@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MobileHeader } from "@/components/MobileHeader";
-import { fmtWon, fmtArrival, TIMELINE_STEPS } from "@/lib/format";
+import { fmtWon, fmtArrival, getPhaseLabel, TIMELINE_STEPS } from "@/lib/format";
 
 type Quote = {
   id: string;
@@ -36,13 +36,6 @@ type RequestData = {
 // [기능] 실시간 반영을 위한 폴링 주기 - 기사가 출발/도착 버튼을 누르면
 // 이 주기 내로 매장 화면에 자동 반영됩니다.
 const POLL_INTERVAL_MS = 5000;
-
-// [기능] 타임라인 단계(step index)별로 매장에 보여줄 상태 문구.
-// 지금은 "기사 출발"(index 1: 출발했어요 클릭 후 ~ 현장 도착 전) 구간만
-// "기사이동중"으로 지정돼 있습니다. 나머지 구간 문구는 계속 정리될 예정입니다.
-const STEP_STATUS_BADGE: Record<number, string> = {
-  1: "기사이동중"
-};
 
 export function RequestDetail({ id }: { id: string }) {
   const router = useRouter();
@@ -138,7 +131,7 @@ export function RequestDetail({ id }: { id: string }) {
                 onClick={() => patch({ action: "select", quoteId: q.id })}
                 className="w-full rounded-md bg-brand text-white py-2 text-sm font-medium disabled:opacity-60"
               >
-                {q.vendor.name} 선택하기
+                업체선정하기
               </button>
             </div>
           ))}
@@ -155,12 +148,10 @@ export function RequestDetail({ id }: { id: string }) {
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold">{data.selectedQuote?.vendor.name} 기사</p>
-                {/* [기능] 타임라인 단계별 상태 문구 - 기사가 "출발했어요"를 누른 직후(현장 도착 전) 구간 */}
-                {STEP_STATUS_BADGE[step] && (
-                  <span className="text-xs font-semibold bg-red-50 text-red-600 px-2 py-0.5 rounded-full">
-                    {STEP_STATUS_BADGE[step]}
-                  </span>
-                )}
+                {/* [기능] 현재 진행 국면 - status + 타임라인 이벤트 개수로 계산 (README: 업체 선정 → 기사이동중 → 현장점검중) */}
+                <span className="text-xs font-semibold bg-red-50 text-red-600 px-2 py-0.5 rounded-full">
+                  {getPhaseLabel(data.status, data.timelineEvents.length)}
+                </span>
               </div>
               <p className="text-xs text-gray-500">
                 {data.equipmentType} · {data.symptom}
@@ -172,6 +163,7 @@ export function RequestDetail({ id }: { id: string }) {
             )}
           </div>
 
+          {/* [디자인] 진행 상황 점 표시 - 국면 문구는 위 뱃지 하나로 통일하고, 여기는 순수 시각적 진행도만 표시 */}
           <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
             {TIMELINE_STEPS.map((label, i) => (
               <div key={label} className={`flex items-start gap-3 ${i > step ? "opacity-40" : ""}`}>
@@ -180,12 +172,7 @@ export function RequestDetail({ id }: { id: string }) {
                     i < step ? "bg-green-600 border-green-600" : i === step ? "bg-brand border-brand" : "border-gray-300"
                   }`}
                 />
-                <div>
-                  <p className="text-sm font-medium">{label}</p>
-                  {i === step && i < 3 && (
-                    <p className="text-xs text-gray-500">{STEP_STATUS_BADGE[i] ?? "진행 중"} · 자동 갱신됨</p>
-                  )}
-                </div>
+                <p className="text-sm font-medium">{label}</p>
               </div>
             ))}
           </div>
@@ -196,6 +183,9 @@ export function RequestDetail({ id }: { id: string }) {
       {data.status === "COMPLETED" && data.selectedQuote && (
         <div className="space-y-4">
           <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
+            <span className="inline-block text-xs font-semibold bg-brand-light text-brand px-2 py-0.5 rounded-full mb-2">
+              {getPhaseLabel(data.status, data.timelineEvents.length)}
+            </span>
             <p className="text-sm font-semibold">작업이 완료됐어요</p>
             <p className="text-xs text-gray-500 mt-1">
               {data.store.name} · {data.equipmentType}

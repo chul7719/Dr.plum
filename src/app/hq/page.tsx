@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { fmtWon, STATUS_LABEL, STATUS_BADGE_CLASS } from "@/lib/format";
+import { fmtWon, STATUS_BADGE_CLASS, getPhaseLabel } from "@/lib/format";
 import { LogoutButton } from "@/components/LogoutButton";
 
 export default async function HQPage() {
@@ -16,7 +16,7 @@ export default async function HQPage() {
     organizationId ? prisma.organization.findUnique({ where: { id: organizationId } }) : null,
     prisma.request.findMany({
       where: { store: { organizationId } },
-      include: { store: true, selectedQuote: true },
+      include: { store: true, selectedQuote: true, timelineEvents: true },
       orderBy: { createdAt: "desc" }
     })
   ]);
@@ -78,7 +78,7 @@ export default async function HQPage() {
                 </p>
               </div>
               <span className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_BADGE_CLASS[r.status]}`}>
-                {STATUS_LABEL[r.status]}
+                {getPhaseLabel(r.status, r.timelineEvents.length)}
               </span>
             </div>
           ))}
@@ -104,7 +104,7 @@ export default async function HQPage() {
                 <td className="px-4 py-2">{r.selectedQuote ? fmtWon(r.selectedQuote.price) : "-"}</td>
                 <td className="px-4 py-2">
                   <span className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_BADGE_CLASS[r.status]}`}>
-                    {STATUS_LABEL[r.status]}
+                    {getPhaseLabel(r.status, r.timelineEvents.length)}
                   </span>
                 </td>
               </tr>
