@@ -12,6 +12,17 @@ function inMinutes(n: number) {
   return new Date(Date.now() + n * 60000);
 }
 
+// [기능] 본사가 관리하는 설비 종류 목록(README: "장비등록")의 기본값 -
+// 예전에 NewRequestForm에 하드코딩돼 있던 4가지 항목을 그대로 시드해서
+// 첫 실행 경험이 똑같이 유지되게 합니다.
+const DEFAULT_EQUIPMENT_TYPES = ["냉장 쇼케이스", "냉동고", "공조 설비", "POS 단말"];
+
+async function seedEquipmentTypes(organizationId: string) {
+  await prisma.equipmentType.createMany({
+    data: DEFAULT_EQUIPMENT_TYPES.map((name) => ({ name, organizationId }))
+  });
+}
+
 async function main() {
   const password = await bcrypt.hash("password123", 10);
 
@@ -35,6 +46,14 @@ async function main() {
   const orgGreen = await prisma.organization.create({ data: { name: "그린마트 본사" } });
   const storeGreen = await prisma.store.create({
     data: { name: "역삼점", address: "서울 강남구 역삼동", organizationId: orgGreen.id }
+  });
+  await seedEquipmentTypes(orgGreen.id);
+  await prisma.notice.create({
+    data: {
+      organizationId: orgGreen.id,
+      title: "여름철 냉방 설비 점검 안내",
+      content: "폭염 대비 냉방 설비 사전 점검을 요청하실 매장은 긴급 표시 없이 등록해주세요."
+    }
   });
 
   const martManager = await prisma.user.create({
@@ -81,6 +100,14 @@ async function main() {
   const orgHappy = await prisma.organization.create({ data: { name: "해피마트 본사" } });
   const storeHappy = await prisma.store.create({
     data: { name: "잠실점", address: "서울 송파구 잠실동", organizationId: orgHappy.id }
+  });
+  await seedEquipmentTypes(orgHappy.id);
+  await prisma.notice.create({
+    data: {
+      organizationId: orgHappy.id,
+      title: "정산 지급일 변경 안내",
+      content: "이번 달부터 정산 지급이 매주 금요일 일괄 처리됩니다."
+    }
   });
 
   const martManager2 = await prisma.user.create({

@@ -13,22 +13,22 @@ datasource db {
 
 enum Role {
   MART_MANAGER // 매장 담당자
-  TECHNICIAN   // 협력업체 기사
-  HQ_ADMIN     // 본사 관리자
+  TECHNICIAN // 협력업체 기사
+  HQ_ADMIN // 본사 관리자
 }
 
 enum RequestStatus {
-  QUOTING      // 견적(입찰) 대기 - 협력업체들이 가격/도착예정시간을 제안하는 단계
-  ACCEPTED     // 업체 선정 완료 - 아직 기사가 출발 전
-  IN_PROGRESS  // 기사 출발 ~ 현장 수리 중 (세부 단계는 TimelineEvent 개수로 구분)
-  COMPLETED    // 완료보고 제출 (정산 전)
-  PAID         // 정산 완료
+  QUOTING // 견적(입찰) 대기 - 협력업체들이 가격/도착예정시간을 제안하는 단계
+  ACCEPTED // 업체 선정 완료 - 아직 기사가 출발 전
+  IN_PROGRESS // 기사 출발 ~ 현장 수리 중 (세부 단계는 TimelineEvent 개수로 구분)
+  COMPLETED // 완료보고 제출 (정산 전)
+  PAID // 정산 완료
 }
 
 enum SettlementStatus {
-  PENDING   // 정산 대기
-  INVOICED  // 청구서 발행
-  PAID      // 지급 완료
+  PENDING // 정산 대기
+  INVOICED // 청구서 발행
+  PAID // 지급 완료
 }
 
 // [기능] 다지점/다본사 구조 (README 로드맵 5)
@@ -36,11 +36,14 @@ enum SettlementStatus {
 // HQ_ADMIN 계정은 특정 Organization에 소속되고, 대시보드/정산 조회는 항상
 // "내 Organization에 속한 Store"로 범위를 제한합니다 (다른 프랜차이즈 데이터 격리).
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  stores    Store[]
-  admins    User[]
-  createdAt DateTime @default(now())
+  id             String          @id @default(cuid())
+  name           String
+  stores         Store[]
+  admins         User[]
+  vendors        Vendor[]
+  equipmentTypes EquipmentType[]
+  notices        Notice[]
+  createdAt      DateTime        @default(now())
 }
 
 model Store {
@@ -54,18 +57,25 @@ model Store {
   createdAt      DateTime     @default(now())
 }
 
+// [기능] 협력업체 - 두 가지 방식으로 생겨납니다.
+//   1) 기사 회원가입 시 "새 업체 등록" (organizationId 없음) - 모든 본사의 요청에
+//      입찰 가능한 공용 마켓플레이스 업체
+//   2) 본사가 직접 "업체 등록" 화면에서 등록 (organizationId 있음) - 그 본사
+//      소속 매장의 요청에만 입찰 가능한 본사 전용 업체
 model Vendor {
-  id          String   @id @default(cuid())
-  name        String
-  ratingAvg   Float    @default(4.5)
-  technicians User[]
-  quotes      Quote[]
-  createdAt   DateTime @default(now())
+  id             String        @id @default(cuid())
+  name           String
+  ratingAvg      Float         @default(4.5)
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  technicians    User[]
+  quotes         Quote[]
+  createdAt      DateTime      @default(now())
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String @id @default(cuid())
+  email        String @unique
   passwordHash String
   name         String
   role         Role
@@ -86,11 +96,39 @@ model User {
   createdAt DateTime  @default(now())
 }
 
+// [기능] 설비 종류 관리 - 본사가 관리하는 "요청 등록 시 고를 수 있는 설비 종류"
+// 목록입니다. 예전에는 NewRequestForm에 냉장 쇼케이스/냉동고/공조 설비/POS
+// 단말이 하드코딩돼 있었는데, 이제 본사가 자기 소속 매장에서 쓸 목록을
+// 직접 추가·삭제할 수 있습니다. Request.equipmentType은 여전히 자유
+// 텍스트(String)라 이 목록은 입력을 돕는 선택지일 뿐, 요청과 FK로 묶여있진
+// 않습니다.
+model EquipmentType {
+  id             String       @id @default(cuid())
+  name           String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, name])
+}
+
+// [기능] 본사 공지사항 게시판 - 그 본사 소속 매장 담당자 + 협력업체 기사에게
+// 공통으로 보여주는 공지입니다 (README: "본사 소속 매장+기사 전체 공통 게시판").
+model Notice {
+  id             String       @id @default(cuid())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  title          String
+  content        String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
 model Request {
-  id            String        @id @default(cuid())
-  store         Store         @relation(fields: [storeId], references: [id])
+  id            String @id @default(cuid())
+  store         Store  @relation(fields: [storeId], references: [id])
   storeId       String
-  requestedBy   User          @relation("RequestedBy", fields: [requestedById], references: [id])
+  requestedBy   User   @relation("RequestedBy", fields: [requestedById], references: [id])
   requestedById String
 
   equipmentType String // 예: 냉장 쇼케이스, 공조 설비, POS 단말
@@ -98,9 +136,9 @@ model Request {
   urgent        Boolean       @default(false)
   status        RequestStatus @default(QUOTING)
 
-  quotes          Quote[]         @relation("RequestQuotes")
-  selectedQuote   Quote?          @relation("SelectedQuote", fields: [selectedQuoteId], references: [id])
-  selectedQuoteId String?         @unique
+  quotes          Quote[] @relation("RequestQuotes")
+  selectedQuote   Quote?  @relation("SelectedQuote", fields: [selectedQuoteId], references: [id])
+  selectedQuoteId String? @unique
 
   // [기능] 완료보고 - 협력업체 기사가 작업 완료 시 남기는 조치 내용 + 사진(들)
   completionNotes String?

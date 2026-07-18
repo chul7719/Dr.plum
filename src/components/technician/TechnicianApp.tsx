@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { MobileHeader } from "@/components/MobileHeader";
 import { fmtWon, fmtScheduledAt, getPhaseLabel } from "@/lib/format";
+import { NoticeList } from "@/components/NoticeList";
 
 type Quote = {
   id: string;
@@ -38,12 +39,13 @@ type RequestItem = {
 const POLL_INTERVAL_MS = 6000;
 
 // [디자인] 탭 정의 - 라벨과 그 탭에 표시할 요청 개수(뱃지)를 함께 관리
-type TabKey = "open" | "pending" | "progress" | "completed";
+type TabKey = "open" | "pending" | "progress" | "completed" | "notice";
 const TAB_LABEL: Record<TabKey, string> = {
   open: "신규요청",
   pending: "제안한 요청",
   progress: "진행 작업",
-  completed: "작업완료"
+  completed: "작업완료",
+  notice: "공지"
 };
 
 export function TechnicianApp() {
@@ -87,15 +89,16 @@ export function TechnicianApp() {
     open: openForBid.length,
     pending: myPendingBids.length,
     progress: mine.length,
-    completed: completed.length
+    completed: completed.length,
+    notice: 0
   };
 
   return (
     <div>
       <MobileHeader title="기사 앱" />
 
-      {/* [디자인] 탭 바 - 4개 섹션을 탭으로 전환 */}
-      <div className="grid grid-cols-4 gap-1 bg-gray-100 rounded-lg p-1 mb-4">
+      {/* [디자인] 탭 바 - 5개 섹션을 탭으로 전환 */}
+      <div className="grid grid-cols-5 gap-1 bg-gray-100 rounded-lg p-1 mb-4">
         {(Object.keys(TAB_LABEL) as TabKey[]).map((key) => (
           <button
             key={key}
@@ -198,6 +201,9 @@ export function TechnicianApp() {
           ))}
         </div>
       )}
+
+      {/* [디자인] 탭 5: 본사 공지 - 소속 업체가 특정 본사 전용이면 그 본사 공지를 보여줌 */}
+      {tab === "notice" && <NoticeList />}
     </div>
   );
 }

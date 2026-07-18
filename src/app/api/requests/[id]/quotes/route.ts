@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { REQUEST_INCLUDE } from "@/lib/request-include";
+import { resolveVendorScope } from "@/lib/vendor-scope";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -16,10 +17,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
   }
 
-  const target = await prisma.request.findUnique({ where: { id: params.id } });
+  const target = await prisma.request.findUnique({ where: { id: params.id }, include: { store: true } });
   if (!target) return NextResponse.json({ error: "요청을 찾을 수 없습니다." }, { status: 404 });
   if (target.status !== "QUOTING") {
     return NextResponse.json({ error: "이미 업체가 선정되어 더 이상 제안을 받지 않는 요청입니다." }, { status: 400 });
+  }
+
+  // [기능] 본사 전용 업체(README: "업체 등록")는 그 본사 소속 매장의 요청에만 입찰 가능
+  const vendorOrgId = await resolveVendorScope(session.user.vendorId);
+  if (vendorOrgId && vendorOrgId !== target.store.organizationId) {
+    return NextResponse.json({ error: "우리 업체가 소속된 본사의 요청에만 제안할 수 있습니다." }, { status: 403 });
   }
 
   const { price, scheduledAt, note } = (await req.json()) as {

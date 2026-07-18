@@ -30,12 +30,20 @@ export function MartRequestList() {
     <div>
       <MobileHeader title="내 요청 목록" />
 
-      <Link
-        href="/mart/requests/new"
-        className="block w-full text-center rounded-lg bg-brand text-white py-3 text-sm font-medium mb-4"
-      >
-        + 새 요청 등록
-      </Link>
+      <div className="flex gap-2 mb-4">
+        <Link
+          href="/mart/requests/new"
+          className="flex-1 block text-center rounded-lg bg-brand text-white py-3 text-sm font-medium"
+        >
+          + 새 요청 등록
+        </Link>
+        <Link
+          href="/mart/notices"
+          className="flex-1 block text-center rounded-lg border border-gray-300 py-3 text-sm font-medium"
+        >
+          본사 공지
+        </Link>
+      </div>
 
       {requests === null && <p className="text-sm text-gray-400 text-center py-10">불러오는 중...</p>}
 

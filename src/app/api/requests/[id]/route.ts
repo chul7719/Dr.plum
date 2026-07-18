@@ -31,7 +31,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   });
   if (!request) return NextResponse.json({ error: "요청을 찾을 수 없습니다." }, { status: 404 });
   // [기능] 다지점/다본사 데이터 격리 - URL로 직접 접근해도 남의 지점/본사 요청은 못 봄
-  if (!canAccessRequest(session, request)) {
+  if (!(await canAccessRequest(session, request))) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
   }
 
@@ -50,7 +50,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     include: { timelineEvents: true, selectedQuote: true, store: true }
   });
   if (!existing) return NextResponse.json({ error: "요청을 찾을 수 없습니다." }, { status: 404 });
-  if (!canAccessRequest(session, existing)) {
+  if (!(await canAccessRequest(session, existing))) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
   }
 

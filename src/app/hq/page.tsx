@@ -40,20 +40,28 @@ export default async function HQPage() {
 
   return (
     <main className="min-h-screen max-w-5xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-semibold">본사 대시보드</h1>
           {organization && <p className="text-xs text-gray-500 mt-0.5">{organization.name}</p>}
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/hq/settlements"
-            className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5"
-          >
-            정산 관리
-          </Link>
-          <LogoutButton />
-        </div>
+        <LogoutButton />
+      </div>
+
+      {/* [디자인] 본사 관리 메뉴 - 정산/업체/설비 종류/공지사항 CRUD 화면으로 이동 */}
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
+        <Link href="/hq/settlements" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
+          정산 관리
+        </Link>
+        <Link href="/hq/vendors" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
+          업체 관리
+        </Link>
+        <Link href="/hq/equipment-types" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
+          설비 종류 관리
+        </Link>
+        <Link href="/hq/notices" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
+          공지사항
+        </Link>
       </div>
 
       {/* [디자인] 지표 카드 4개 - 모바일 2열 / PC 4열 그리드 */}

@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { REQUEST_INCLUDE } from "@/lib/request-include";
+import { resolveVendorScope } from "@/lib/vendor-scope";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -20,11 +21,16 @@ export async function GET() {
     // 내 지점 요청만
     where = { storeId };
   } else if (role === "TECHNICIAN") {
-    // 실제 입찰 흐름(README 로드맵 1): 아직 입찰이 열려 있는(QUOTING) 모든 요청은
-    // 어느 협력업체든 볼 수 있어야 새로 제안을 넣을 수 있습니다. 여기에 더해
-    // 이미 내가 선정돼 진행 중인 요청도 함께 보여줍니다.
+    // 실제 입찰 흐름(README 로드맵 1): 공용 마켓플레이스 업체 소속 기사는
+    // 아직 입찰이 열려 있는(QUOTING) 모든 요청을 볼 수 있지만, 본사 전용
+    // 업체(src/lib/vendor-scope.ts) 소속 기사는 그 본사 소속 매장의 요청만
+    // 볼 수 있습니다. 여기에 더해 이미 내가 선정돼 진행 중인 요청도 함께 보여줍니다.
+    const vendorOrgId = await resolveVendorScope(vendorId);
     where = {
-      OR: [{ status: "QUOTING" }, { selectedQuote: { vendorId } }]
+      OR: [
+        { status: "QUOTING", ...(vendorOrgId ? { store: { organizationId: vendorOrgId } } : {}) },
+        { selectedQuote: { vendorId } }
+      ]
     };
   } else if (role === "HQ_ADMIN") {
     // 다지점/다본사 구조(README 로드맵 5): 내 본사(organization) 소속 지점의
