@@ -1,16 +1,25 @@
 "use client";
 
 // [기능] 협력업체 기사 앱 (모바일 전용 화면)
-// 세 가지 흐름을 담당합니다.
-//   1) 입찰(README 로드맵 1) - 아직 아무도 선정되지 않은 요청에 가격/도착예정시간을 제안
-//   2) 실시간 진행 상태(README 로드맵 3) - 내가 선정된 작업의 "출발/도착"을 직접 트리거
-//   3) 완료보고 + 사진 업로드(README 로드맵 2) - 조치 내용과 현장 사진을 남기고 작업 종료
+// 네 가지 흐름을 탭으로 나눠 보여줍니다.
+//   1) 신규요청(README 로드맵 1) - 아직 아무도 선정되지 않은 요청에 가격/방문예정일/도착예정시간을 제안
+//   2) 제안한 요청 - 매장의 선택을 기다리는 중인 내 제안, 수정 가능
+//   3) 진행 작업(README 로드맵 3) - 내가 선정된 작업의 "출발/도착"을 직접 트리거
+//   4) 작업완료 - 완료보고(README 로드맵 2, 사진 포함)까지 마친 작업 이력
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { MobileHeader } from "@/components/MobileHeader";
-import { fmtWon } from "@/lib/format";
+import { fmtWon, fmtDate } from "@/lib/format";
 
-type Quote = { id: string; vendorId: string; price: number; etaMinutes: number; note: string | null; vendor: { name: string } };
+type Quote = {
+  id: string;
+  vendorId: string;
+  price: number;
+  etaMinutes: number;
+  scheduledDate: string;
+  note: string | null;
+  vendor: { name: string };
+};
 type RequestItem = {
   id: string;
   equipmentType: string;
@@ -29,10 +38,20 @@ type RequestItem = {
 // 폴링이 필요합니다"의 폴링 방식 구현).
 const POLL_INTERVAL_MS = 6000;
 
+// [디자인] 탭 정의 - 라벨과 그 탭에 표시할 요청 개수(뱃지)를 함께 관리
+type TabKey = "open" | "pending" | "progress" | "completed";
+const TAB_LABEL: Record<TabKey, string> = {
+  open: "신규요청",
+  pending: "제안한 요청",
+  progress: "진행 작업",
+  completed: "작업완료"
+};
+
 export function TechnicianApp() {
   const { data: session } = useSession();
   const [requests, setRequests] = useState<RequestItem[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<TabKey>("open");
 
   async function load() {
     const res = await fetch("/api/requests");
@@ -65,89 +84,129 @@ export function TechnicianApp() {
   // [기능] 작업완료 목록 - 내가 선정돼 완료보고까지 마친(COMPLETED) 또는 정산까지 끝난(PAID) 요청
   const completed = requests?.filter((r) => r.selectedQuote?.vendorId === vendorId && ["COMPLETED", "PAID"].includes(r.status)) ?? [];
 
+  const counts: Record<TabKey, number> = {
+    open: openForBid.length,
+    pending: myPendingBids.length,
+    progress: mine.length,
+    completed: completed.length
+  };
+
   return (
     <div>
       <MobileHeader title="기사 앱" />
 
-      {/* [디자인] 섹션 1: 입찰 가능한 신규 요청 - 아직 내가 제안을 넣지 않은 건 */}
-      <h2 className="text-xs text-gray-500 mb-2">입찰 가능한 신규 요청</h2>
-      <div className="space-y-2 mb-6">
-        {openForBid.length === 0 && <p className="text-sm text-gray-400 py-4 text-center">입찰 가능한 요청이 없습니다.</p>}
-        {openForBid.map((r) => (
-          <BidCard key={r.id} request={r} busy={busy} onSubmit={(price, etaMinutes, note) => submitQuote(r.id, price, etaMinutes, note, load, setBusy)} />
+      {/* [디자인] 탭 바 - 4개 섹션을 탭으로 전환 */}
+      <div className="grid grid-cols-4 gap-1 bg-gray-100 rounded-lg p-1 mb-4">
+        {(Object.keys(TAB_LABEL) as TabKey[]).map((key) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`rounded-md py-2 text-xs font-medium ${
+              tab === key ? "bg-white text-brand shadow-sm" : "text-gray-500"
+            }`}
+          >
+            {TAB_LABEL[key]}
+            {counts[key] > 0 && <span className="ml-1">{counts[key]}</span>}
+          </button>
         ))}
       </div>
 
-      {/* [디자인] 섹션 2: 내가 제안한 요청 - 매장의 선택을 기다리는 중 */}
-      {myPendingBids.length > 0 && (
-        <>
-          <h2 className="text-xs text-gray-500 mb-2">내가 제안한 요청 (선택 대기중)</h2>
-          <div className="space-y-2 mb-6">
-            {myPendingBids.map((r) => {
-              const myQuote = r.quotes.find((q) => q.vendorId === vendorId)!;
-              return (
-                <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold">
-                      {r.store.name} · {r.equipmentType}
-                    </p>
-                    <span className="text-xs font-semibold text-amber-600">매장 선택 대기중</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1 mb-2">{r.symptom}</p>
-                  <p className="text-sm font-bold">
-                    {fmtWon(myQuote.price)} · 도착 {myQuote.etaMinutes}분
-                  </p>
-                  <BidCard request={r} busy={busy} revise editingQuote={myQuote} onSubmit={(price, etaMinutes, note) => submitQuote(r.id, price, etaMinutes, note, load, setBusy)} />
-                </div>
-              );
-            })}
-          </div>
-        </>
+      {/* [디자인] 탭 1: 입찰 가능한 신규 요청 - 아직 내가 제안을 넣지 않은 건 */}
+      {tab === "open" && (
+        <div className="space-y-2">
+          {openForBid.length === 0 && <p className="text-sm text-gray-400 py-4 text-center">입찰 가능한 요청이 없습니다.</p>}
+          {openForBid.map((r) => (
+            <BidCard
+              key={r.id}
+              request={r}
+              busy={busy}
+              onSubmit={(price, etaMinutes, scheduledDate, note) =>
+                submitQuote(r.id, price, etaMinutes, scheduledDate, note, load, setBusy)
+              }
+            />
+          ))}
+        </div>
       )}
 
-      {/* [디자인] 섹션 3: 선정되어 진행 중인 내 작업 - 출발/도착/완료보고 */}
-      <h2 className="text-xs text-gray-500 mb-2">내 진행 작업</h2>
-      <div className="space-y-2 mb-6">
-        {mine.length === 0 && <p className="text-sm text-gray-400 py-4 text-center">진행 중인 작업이 없습니다.</p>}
-        {mine.map((r) => (
-          <ProgressCard key={r.id} request={r} busy={busy} onAct={act} />
-        ))}
-      </div>
+      {/* [디자인] 탭 2: 내가 제안한 요청 - 매장의 선택을 기다리는 중 */}
+      {tab === "pending" && (
+        <div className="space-y-2">
+          {myPendingBids.length === 0 && <p className="text-sm text-gray-400 py-4 text-center">제안한 요청이 없습니다.</p>}
+          {myPendingBids.map((r) => {
+            const myQuote = r.quotes.find((q) => q.vendorId === vendorId)!;
+            return (
+              <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold">
+                    {r.store.name} · {r.equipmentType}
+                  </p>
+                  <span className="text-xs font-semibold text-amber-600">매장 선택 대기중</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1 mb-2">{r.symptom}</p>
+                <p className="text-sm font-bold">
+                  {fmtWon(myQuote.price)} · {fmtDate(myQuote.scheduledDate)} 방문 · 도착 {myQuote.etaMinutes}분
+                </p>
+                <BidCard
+                  request={r}
+                  busy={busy}
+                  revise
+                  editingQuote={myQuote}
+                  onSubmit={(price, etaMinutes, scheduledDate, note) =>
+                    submitQuote(r.id, price, etaMinutes, scheduledDate, note, load, setBusy)
+                  }
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* [디자인] 섹션 4: 작업완료 목록 - 완료보고를 마친(정산 대기/완료 포함) 작업 이력 */}
-      <h2 className="text-xs text-gray-500 mb-2">작업완료 목록</h2>
-      <div className="space-y-2">
-        {completed.length === 0 && <p className="text-sm text-gray-400 py-4 text-center">완료한 작업이 없습니다.</p>}
-        {completed.map((r) => (
-          <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold">
-                {r.store.name} · {r.equipmentType}
-              </p>
-              <span className="text-xs font-semibold text-green-700">{r.status === "PAID" ? "정산 완료" : "완료보고 제출"}</span>
+      {/* [디자인] 탭 3: 선정되어 진행 중인 내 작업 - 출발/도착/완료보고 */}
+      {tab === "progress" && (
+        <div className="space-y-2">
+          {mine.length === 0 && <p className="text-sm text-gray-400 py-4 text-center">진행 중인 작업이 없습니다.</p>}
+          {mine.map((r) => (
+            <ProgressCard key={r.id} request={r} busy={busy} onAct={act} />
+          ))}
+        </div>
+      )}
+
+      {/* [디자인] 탭 4: 작업완료 목록 - 완료보고를 마친(정산 대기/완료 포함) 작업 이력 */}
+      {tab === "completed" && (
+        <div className="space-y-2">
+          {completed.length === 0 && <p className="text-sm text-gray-400 py-4 text-center">완료한 작업이 없습니다.</p>}
+          {completed.map((r) => (
+            <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">
+                  {r.store.name} · {r.equipmentType}
+                </p>
+                <span className="text-xs font-semibold text-green-700">{r.status === "PAID" ? "정산 완료" : "완료보고 제출"}</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">{r.symptom}</p>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-sm font-bold">{r.selectedQuote && fmtWon(r.selectedQuote.price)}</p>
+                {r.review && (
+                  <span className="text-xs text-amber-500">
+                    {"★".repeat(r.review.stars)}
+                    {"☆".repeat(5 - r.review.stars)}
+                  </span>
+                )}
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">{r.symptom}</p>
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-sm font-bold">{r.selectedQuote && fmtWon(r.selectedQuote.price)}</p>
-              {r.review && (
-                <span className="text-xs text-amber-500">
-                  {"★".repeat(r.review.stars)}
-                  {"☆".repeat(5 - r.review.stars)}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// [기능] 입찰 제출: 가격/도착예정시간을 서버에 POST하고 목록을 새로고침합니다
+// [기능] 입찰 제출: 가격/방문예정일/도착예정시간을 서버에 POST하고 목록을 새로고침합니다
 async function submitQuote(
   requestId: string,
   price: number,
   etaMinutes: number,
+  scheduledDate: string,
   note: string,
   reload: () => Promise<void>,
   setBusy: (b: boolean) => void
@@ -156,10 +215,17 @@ async function submitQuote(
   await fetch(`/api/requests/${requestId}/quotes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ price, etaMinutes, note: note || undefined })
+    body: JSON.stringify({ price, etaMinutes, scheduledDate, note: note || undefined })
   });
   await reload();
   setBusy(false);
+}
+
+// [기능] 오늘 날짜를 <input type="date"> 값 형식(YYYY-MM-DD)으로 반환 - 방문 예정일 기본값
+function todayInputValue() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
 // [디자인] 입찰 제안 입력 카드 - 신규 요청 카드 자체이거나(펼치기 전),
@@ -175,25 +241,37 @@ function BidCard({
   busy: boolean;
   revise?: boolean;
   editingQuote?: Quote;
-  onSubmit: (price: number, etaMinutes: number, note: string) => void;
+  onSubmit: (price: number, etaMinutes: number, scheduledDate: string, note: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [price, setPrice] = useState(editingQuote ? String(editingQuote.price) : "");
   const [eta, setEta] = useState(editingQuote ? String(editingQuote.etaMinutes) : "");
+  const [scheduledDate, setScheduledDate] = useState(
+    editingQuote ? editingQuote.scheduledDate.slice(0, 10) : todayInputValue()
+  );
   const [note, setNote] = useState(editingQuote?.note ?? "");
 
   function submit() {
     const p = Number(price);
     const e = Number(eta);
-    if (!p || !e) return;
-    onSubmit(p, e, note);
+    if (!p || !e || !scheduledDate) return;
+    onSubmit(p, e, scheduledDate, note);
     setOpen(false);
   }
 
   if (revise) {
     return open ? (
       <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">
-        <BidFields price={price} eta={eta} note={note} setPrice={setPrice} setEta={setEta} setNote={setNote} />
+        <BidFields
+          price={price}
+          eta={eta}
+          scheduledDate={scheduledDate}
+          note={note}
+          setPrice={setPrice}
+          setEta={setEta}
+          setScheduledDate={setScheduledDate}
+          setNote={setNote}
+        />
         <button disabled={busy} onClick={submit} className="w-full rounded-md bg-brand text-white py-2 text-sm font-medium disabled:opacity-60">
           제안 수정하기
         </button>
@@ -217,7 +295,16 @@ function BidCard({
 
       {open ? (
         <div className="space-y-2">
-          <BidFields price={price} eta={eta} note={note} setPrice={setPrice} setEta={setEta} setNote={setNote} />
+          <BidFields
+            price={price}
+            eta={eta}
+            scheduledDate={scheduledDate}
+            note={note}
+            setPrice={setPrice}
+            setEta={setEta}
+            setScheduledDate={setScheduledDate}
+            setNote={setNote}
+          />
           <button disabled={busy} onClick={submit} className="w-full rounded-md bg-brand text-white py-2 text-sm font-medium disabled:opacity-60">
             이 가격으로 제안 보내기
           </button>
@@ -231,20 +318,24 @@ function BidCard({
   );
 }
 
-// [디자인] 가격 / 도착예정시간 / 메모 입력 필드 3종
+// [디자인] 가격 / 방문 예정일 / 도착예정시간 / 메모 입력 필드
 function BidFields({
   price,
   eta,
+  scheduledDate,
   note,
   setPrice,
   setEta,
+  setScheduledDate,
   setNote
 }: {
   price: string;
   eta: string;
+  scheduledDate: string;
   note: string;
   setPrice: (v: string) => void;
   setEta: (v: string) => void;
+  setScheduledDate: (v: string) => void;
   setNote: (v: string) => void;
 }) {
   return (
@@ -267,6 +358,16 @@ function BidFields({
           className="w-1/2 rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
       </div>
+      <label className="block text-xs text-gray-500">
+        방문 예정일
+        <input
+          type="date"
+          value={scheduledDate}
+          min={todayInputValue()}
+          onChange={(e) => setScheduledDate(e.target.value)}
+          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
+        />
+      </label>
       <input
         value={note}
         onChange={(e) => setNote(e.target.value)}

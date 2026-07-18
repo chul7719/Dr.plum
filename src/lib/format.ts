@@ -5,6 +5,18 @@ export function fmtWon(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
 
+// [기능] 기사가 제안한 방문 예정 일자 표시 - "오늘"/"내일"이면 그대로 알려주고,
+// 그 외에는 "7월 20일(월)" 형식으로 보여줍니다.
+export function fmtDate(value: Date | string, now: Date = new Date()) {
+  const target = new Date(value);
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(target) - startOfDay(now)) / 86400000);
+
+  if (diffDays === 0) return "오늘";
+  if (diffDays === 1) return "내일";
+  return target.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+}
+
 // [기능] 실시간 ETA 표시 (README 로드맵 3) - 기사가 출발한 시각과 제안된
 // 도착예정시간(etaMinutes)을 기준으로, 지금 시점 기준 "앞으로 몇 분 남았는지"를
 // 계산합니다. 실제 GPS 연동 전까지는 이 추정치로 실시간처럼 보여줍니다.

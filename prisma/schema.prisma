@@ -118,16 +118,17 @@ model Request {
 // 매장 담당자가 그중 하나를 선택합니다. 업체당 요청 1건에 제안은 1개만
 // 유지되도록(재제안 시 갱신) @@unique 제약을 둡니다.
 model Quote {
-  id         String   @id @default(cuid())
-  request    Request  @relation("RequestQuotes", fields: [requestId], references: [id])
-  requestId  String
-  vendor     Vendor   @relation(fields: [vendorId], references: [id])
-  vendorId   String
-  price      Int // 원
-  etaMinutes Int
-  note       String? // 기사가 남기는 제안 메모 (예: "부품 재고 있음, 즉시 출발 가능")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            String   @id @default(cuid())
+  request       Request  @relation("RequestQuotes", fields: [requestId], references: [id])
+  requestId     String
+  vendor        Vendor   @relation(fields: [vendorId], references: [id])
+  vendorId      String
+  price         Int // 원
+  etaMinutes    Int
+  scheduledDate DateTime @default(now()) // 기사가 제안하는 방문 예정 일자 (기본값: 오늘)
+  note          String? // 기사가 남기는 제안 메모 (예: "부품 재고 있음, 즉시 출발 가능")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   selectedFor Request? @relation("SelectedQuote")
 

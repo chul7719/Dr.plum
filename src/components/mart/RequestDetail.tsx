@@ -8,12 +8,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MobileHeader } from "@/components/MobileHeader";
-import { fmtWon, fmtMinutesLeft, TIMELINE_STEPS } from "@/lib/format";
+import { fmtWon, fmtMinutesLeft, fmtDate, TIMELINE_STEPS } from "@/lib/format";
 
 type Quote = {
   id: string;
   price: number;
   etaMinutes: number;
+  scheduledDate: string;
   note: string | null;
   vendor: { name: string; ratingAvg: number };
 };
@@ -123,7 +124,7 @@ export function RequestDetail({ id }: { id: string }) {
               )}
               <p className="text-sm font-semibold">{q.vendor.name}</p>
               <p className="text-xs text-gray-500 mt-1">
-                ★ {q.vendor.ratingAvg.toFixed(1)} · 도착 {q.etaMinutes}분
+                ★ {q.vendor.ratingAvg.toFixed(1)} · {fmtDate(q.scheduledDate)} 방문 · 도착 {q.etaMinutes}분
               </p>
               {q.note && <p className="text-xs text-gray-500 mt-1">&ldquo;{q.note}&rdquo;</p>}
               <p className="text-lg font-bold mt-2 mb-3">{fmtWon(q.price)}</p>

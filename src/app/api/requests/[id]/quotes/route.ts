@@ -22,9 +22,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "이미 업체가 선정되어 더 이상 제안을 받지 않는 요청입니다." }, { status: 400 });
   }
 
-  const { price, etaMinutes, note } = (await req.json()) as {
+  const { price, etaMinutes, scheduledDate, note } = (await req.json()) as {
     price: number;
     etaMinutes: number;
+    scheduledDate?: string;
     note?: string;
   };
 
@@ -32,10 +33,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "가격과 도착예정시간을 올바르게 입력해주세요." }, { status: 400 });
   }
 
+  // [기능] 방문 예정 일자 - 안 보내면(레거시 호출 등) 오늘 날짜로 처리합니다.
+  const parsedDate = scheduledDate ? new Date(scheduledDate) : new Date();
+  if (Number.isNaN(parsedDate.getTime())) {
+    return NextResponse.json({ error: "방문 예정 일자를 올바르게 입력해주세요." }, { status: 400 });
+  }
+
   await prisma.quote.upsert({
     where: { requestId_vendorId: { requestId: params.id, vendorId: session.user.vendorId } },
-    create: { requestId: params.id, vendorId: session.user.vendorId, price, etaMinutes, note },
-    update: { price, etaMinutes, note }
+    create: { requestId: params.id, vendorId: session.user.vendorId, price, etaMinutes, scheduledDate: parsedDate, note },
+    update: { price, etaMinutes, scheduledDate: parsedDate, note }
   });
 
   const updated = await prisma.request.findUnique({
