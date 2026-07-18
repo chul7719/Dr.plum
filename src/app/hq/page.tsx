@@ -2,11 +2,9 @@
 // 다지점/다본사 구조(README 로드맵 5): 로그인한 본사 관리자의 organizationId로
 // 항상 범위를 제한해서, 다른 프랜차이즈 본사의 지점/요청은 보이지 않습니다.
 import { getServerSession } from "next-auth";
-import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fmtWon, STATUS_BADGE_CLASS, getPhaseLabel } from "@/lib/format";
-import { LogoutButton } from "@/components/LogoutButton";
 
 export default async function HQPage() {
   const session = await getServerSession(authOptions);
@@ -40,28 +38,9 @@ export default async function HQPage() {
 
   return (
     <main className="min-h-screen max-w-5xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-xl font-semibold">본사 대시보드</h1>
-          {organization && <p className="text-xs text-gray-500 mt-0.5">{organization.name}</p>}
-        </div>
-        <LogoutButton />
-      </div>
-
-      {/* [디자인] 본사 관리 메뉴 - 정산/업체/설비 종류/공지사항 CRUD 화면으로 이동 */}
-      <div className="flex items-center gap-2 mb-6 flex-wrap">
-        <Link href="/hq/settlements" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
-          정산 관리
-        </Link>
-        <Link href="/hq/vendors" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
-          업체 관리
-        </Link>
-        <Link href="/hq/equipment-types" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
-          설비 종류 관리
-        </Link>
-        <Link href="/hq/notices" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
-          공지사항
-        </Link>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold">본사 대시보드</h1>
+        {organization && <p className="text-xs text-gray-500 mt-0.5">{organization.name}</p>}
       </div>
 
       {/* [디자인] 지표 카드 4개 - 모바일 2열 / PC 4열 그리드 */}

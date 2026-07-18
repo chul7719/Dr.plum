@@ -4,8 +4,6 @@
 // 여기서 등록한 업체는 이 본사 소속 매장의 요청에만 입찰할 수 있습니다
 // (공용 마켓플레이스 업체와 달리 다른 프랜차이즈 요청에는 안 보임).
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { LogoutButton } from "@/components/LogoutButton";
 
 type Vendor = {
   id: string;
@@ -84,15 +82,7 @@ export function VendorList() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">업체 관리</h1>
-        <div className="flex items-center gap-2">
-          <Link href="/hq" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
-            대시보드로
-          </Link>
-          <LogoutButton />
-        </div>
-      </div>
+      <h1 className="text-xl font-semibold mb-6">업체 관리</h1>
 
       {/* [디자인] 새 업체 등록 폼 */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 flex gap-2">

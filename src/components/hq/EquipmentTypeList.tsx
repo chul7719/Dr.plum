@@ -3,8 +3,6 @@
 // [기능] 설비 종류 목록 관리 (README) - 매장 담당자가 새 요청 등록 시 고르는
 // 설비 종류 드롭다운의 원본 목록입니다. 등록/수정/삭제(CRUD).
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { LogoutButton } from "@/components/LogoutButton";
 
 type EquipmentType = { id: string; name: string };
 
@@ -78,15 +76,7 @@ export function EquipmentTypeList() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">설비 종류 관리</h1>
-        <div className="flex items-center gap-2">
-          <Link href="/hq" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
-            대시보드로
-          </Link>
-          <LogoutButton />
-        </div>
-      </div>
+      <h1 className="text-xl font-semibold mb-6">설비 종류 관리</h1>
       <p className="text-xs text-gray-500 mb-4">
         여기서 등록한 항목이 매장 담당자의 &ldquo;새 작업요청&rdquo; 화면 설비 종류 드롭다운에 그대로 나타납니다.
       </p>

@@ -6,9 +6,7 @@
 // MockPaymentGateway)를 호출하고, 성공 시 받은 거래번호(transactionId)를
 // 함께 저장합니다 (README 로드맵 4 - 결제/PG 연동은 인터페이스만 준비).
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { fmtWon } from "@/lib/format";
-import { LogoutButton } from "@/components/LogoutButton";
 
 type Settlement = {
   id: string;
@@ -65,17 +63,9 @@ export function SettlementList() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-semibold">정산 관리</h1>
-          <p className="text-sm text-gray-500 mt-1">협력업체 지급 대기 금액: {fmtWon(totalPending)}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/hq" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
-            대시보드로
-          </Link>
-          <LogoutButton />
-        </div>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold">정산 관리</h1>
+        <p className="text-sm text-gray-500 mt-1">협력업체 지급 대기 금액: {fmtWon(totalPending)}</p>
       </div>
 
       {items === null && <p className="text-sm text-gray-400 text-center py-10">불러오는 중...</p>}

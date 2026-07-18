@@ -4,8 +4,6 @@
 // 여기서 작성한 공지는 이 본사 소속 매장 담당자 + 협력업체 기사 앱에
 // "본사 공지"로 그대로 노출됩니다.
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { LogoutButton } from "@/components/LogoutButton";
 
 type Notice = { id: string; title: string; content: string; createdAt: string };
 
@@ -81,15 +79,7 @@ export function NoticeBoard() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">공지사항 관리</h1>
-        <div className="flex items-center gap-2">
-          <Link href="/hq" className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5">
-            대시보드로
-          </Link>
-          <LogoutButton />
-        </div>
-      </div>
+      <h1 className="text-xl font-semibold mb-6">공지사항 관리</h1>
 
       {/* [디자인] 새 공지 작성 폼 */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 space-y-2">
