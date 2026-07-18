@@ -24,9 +24,17 @@ export default async function HQPage() {
   const total = requests.length;
   const urgentOpen = requests.filter((r) => r.urgent && r.status !== "PAID").length;
   const withVendor = requests.filter((r) => r.selectedQuote);
+  // [기능] 평균 도착시간(분) - 요청 등록 시각부터 선정된 업체의 방문 예정 일시(scheduledAt)까지
+  // 걸리는 시간의 평균입니다. 예전에는 기사가 입력한 상대적 분(etaMinutes)을 그대로 평균 냈지만,
+  // scheduledAt이 절대 일시로 바뀌면서 이 방식이 같은 의미의 지표를 계산하는 방법입니다.
   const avgEta =
     withVendor.length > 0
-      ? Math.round(withVendor.reduce((sum, r) => sum + (r.selectedQuote?.etaMinutes ?? 0), 0) / withVendor.length)
+      ? Math.round(
+          withVendor.reduce((sum, r) => {
+            const minutes = r.selectedQuote ? (r.selectedQuote.scheduledAt.getTime() - r.createdAt.getTime()) / 60000 : 0;
+            return sum + Math.max(0, minutes);
+          }, 0) / withVendor.length
+        )
       : 0;
   const totalCost = requests.reduce((sum, r) => sum + (r.selectedQuote?.price ?? 0), 0);
 

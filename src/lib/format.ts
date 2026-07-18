@@ -5,27 +5,23 @@ export function fmtWon(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
 
-// [기능] 기사가 제안한 방문 예정 일자 표시 - "오늘"/"내일"이면 그대로 알려주고,
-// 그 외에는 "7월 20일(월)" 형식으로 보여줍니다.
-export function fmtDate(value: Date | string, now: Date = new Date()) {
-  const target = new Date(value);
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diffDays = Math.round((startOfDay(target) - startOfDay(now)) / 86400000);
+// [기능] 기사가 제안한 방문 예정 일시(scheduledAt) 표시 (README 로드맵 3).
+// 오늘이면 지금 시점 기준 "N분 후 도착 예정"으로 실시간 계산해서 보여주고,
+// 다른 날짜면 기사가 입력한 날짜+시각을 그대로 "7월 20일(월) 14:30 방문 예정"
+// 형식으로 보여줍니다. 견적 비교 목록과 출발 후 실시간 트래킹에 모두 씁니다.
+export function fmtArrival(scheduledAt: Date | string, now: Date = new Date()) {
+  const target = new Date(scheduledAt);
+  const isToday = target.toDateString() === now.toDateString();
 
-  if (diffDays === 0) return "오늘";
-  if (diffDays === 1) return "내일";
-  return target.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
-}
+  if (isToday) {
+    const diffMin = Math.round((target.getTime() - now.getTime()) / 60000);
+    if (diffMin <= 0) return "곧 도착 예정";
+    return `${diffMin}분 후 도착 예정`;
+  }
 
-// [기능] 실시간 ETA 표시 (README 로드맵 3) - 기사가 출발한 시각과 제안된
-// 도착예정시간(etaMinutes)을 기준으로, 지금 시점 기준 "앞으로 몇 분 남았는지"를
-// 계산합니다. 실제 GPS 연동 전까지는 이 추정치로 실시간처럼 보여줍니다.
-export function fmtMinutesLeft(departedAt: Date | string, etaMinutes: number, now: Date = new Date()) {
-  const departed = new Date(departedAt).getTime();
-  const elapsedMin = Math.floor((now.getTime() - departed) / 60000);
-  const left = etaMinutes - elapsedMin;
-  if (left <= 0) return "곧 도착 예정";
-  return `약 ${left}분 후 도착 예정`;
+  const dateLabel = target.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+  const timeLabel = target.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${dateLabel} ${timeLabel} 방문 예정`;
 }
 
 export const STATUS_LABEL: Record<string, string> = {

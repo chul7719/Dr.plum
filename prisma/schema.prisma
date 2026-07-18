@@ -114,21 +114,23 @@ model Request {
 }
 
 // [기능] 협력업체 실제 입찰 흐름 (README 로드맵 1)
-// 요청 1건에 여러 협력업체가 각자 가격/도착예정시간을 제안(Quote)하고,
+// 요청 1건에 여러 협력업체가 각자 가격/방문 예정 일시를 제안(Quote)하고,
 // 매장 담당자가 그중 하나를 선택합니다. 업체당 요청 1건에 제안은 1개만
 // 유지되도록(재제안 시 갱신) @@unique 제약을 둡니다.
 model Quote {
-  id            String   @id @default(cuid())
-  request       Request  @relation("RequestQuotes", fields: [requestId], references: [id])
-  requestId     String
-  vendor        Vendor   @relation(fields: [vendorId], references: [id])
-  vendorId      String
-  price         Int // 원
-  etaMinutes    Int
-  scheduledDate DateTime @default(now()) // 기사가 제안하는 방문 예정 일자 (기본값: 오늘)
-  note          String? // 기사가 남기는 제안 메모 (예: "부품 재고 있음, 즉시 출발 가능")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(cuid())
+  request     Request  @relation("RequestQuotes", fields: [requestId], references: [id])
+  requestId   String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id])
+  vendorId    String
+  price       Int // 원
+  // [기능] 기사가 제안하는 방문 예정 일시(날짜+시간, 기본값: 오늘 현재 시각).
+  // 화면에서는 오늘이면 "N분 후 도착"으로 계산해서, 다른 날짜면 날짜+시각을
+  // 그대로 보여줍니다 (src/lib/format.ts의 fmtArrival 참고).
+  scheduledAt DateTime @default(now())
+  note        String? // 기사가 남기는 제안 메모 (예: "부품 재고 있음, 즉시 출발 가능")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   selectedFor Request? @relation("SelectedQuote")
 

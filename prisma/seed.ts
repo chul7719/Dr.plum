@@ -7,6 +7,11 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// 지금부터 n분 뒤 시각 - Quote.scheduledAt 샘플 값 생성용
+function inMinutes(n: number) {
+  return new Date(Date.now() + n * 60000);
+}
+
 async function main() {
   const password = await bcrypt.hash("password123", 10);
 
@@ -64,9 +69,9 @@ async function main() {
       timelineEvents: { create: [{ step: "요청 접수" }] },
       quotes: {
         create: [
-          { vendorId: vendorA.id, price: 180000, etaMinutes: 40, note: "부품 재고 보유, 오늘 방문 가능" },
-          { vendorId: vendorB.id, price: 210000, etaMinutes: 25 },
-          { vendorId: vendorC.id, price: 150000, etaMinutes: 60 }
+          { vendorId: vendorA.id, price: 180000, scheduledAt: inMinutes(40), note: "부품 재고 보유, 오늘 방문 가능" },
+          { vendorId: vendorB.id, price: 210000, scheduledAt: inMinutes(25) },
+          { vendorId: vendorC.id, price: 150000, scheduledAt: inMinutes(60) }
         ]
       }
     }

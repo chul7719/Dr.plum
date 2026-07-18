@@ -2,21 +2,20 @@
 
 // [기능] 협력업체 기사 앱 (모바일 전용 화면)
 // 네 가지 흐름을 탭으로 나눠 보여줍니다.
-//   1) 신규요청(README 로드맵 1) - 아직 아무도 선정되지 않은 요청에 가격/방문예정일/도착예정시간을 제안
+//   1) 신규요청(README 로드맵 1) - 아직 아무도 선정되지 않은 요청에 가격/방문예정일시를 제안
 //   2) 제안한 요청 - 매장의 선택을 기다리는 중인 내 제안, 수정 가능
 //   3) 진행 작업(README 로드맵 3) - 내가 선정된 작업의 "출발/도착"을 직접 트리거
 //   4) 작업완료 - 완료보고(README 로드맵 2, 사진 포함)까지 마친 작업 이력
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { MobileHeader } from "@/components/MobileHeader";
-import { fmtWon, fmtDate } from "@/lib/format";
+import { fmtWon, fmtArrival } from "@/lib/format";
 
 type Quote = {
   id: string;
   vendorId: string;
   price: number;
-  etaMinutes: number;
-  scheduledDate: string;
+  scheduledAt: string;
   note: string | null;
   vendor: { name: string };
 };
@@ -120,9 +119,7 @@ export function TechnicianApp() {
               key={r.id}
               request={r}
               busy={busy}
-              onSubmit={(price, etaMinutes, scheduledDate, note) =>
-                submitQuote(r.id, price, etaMinutes, scheduledDate, note, load, setBusy)
-              }
+              onSubmit={(price, scheduledAt, note) => submitQuote(r.id, price, scheduledAt, note, load, setBusy)}
             />
           ))}
         </div>
@@ -144,16 +141,14 @@ export function TechnicianApp() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1 mb-2">{r.symptom}</p>
                 <p className="text-sm font-bold">
-                  {fmtWon(myQuote.price)} · {fmtDate(myQuote.scheduledDate)} 방문 · 도착 {myQuote.etaMinutes}분
+                  {fmtWon(myQuote.price)} · {fmtArrival(myQuote.scheduledAt)}
                 </p>
                 <BidCard
                   request={r}
                   busy={busy}
                   revise
                   editingQuote={myQuote}
-                  onSubmit={(price, etaMinutes, scheduledDate, note) =>
-                    submitQuote(r.id, price, etaMinutes, scheduledDate, note, load, setBusy)
-                  }
+                  onSubmit={(price, scheduledAt, note) => submitQuote(r.id, price, scheduledAt, note, load, setBusy)}
                 />
               </div>
             );
@@ -201,12 +196,11 @@ export function TechnicianApp() {
   );
 }
 
-// [기능] 입찰 제출: 가격/방문예정일/도착예정시간을 서버에 POST하고 목록을 새로고침합니다
+// [기능] 입찰 제출: 가격/방문예정일시를 서버에 POST하고 목록을 새로고침합니다
 async function submitQuote(
   requestId: string,
   price: number,
-  etaMinutes: number,
-  scheduledDate: string,
+  scheduledAt: string,
   note: string,
   reload: () => Promise<void>,
   setBusy: (b: boolean) => void
@@ -215,17 +209,21 @@ async function submitQuote(
   await fetch(`/api/requests/${requestId}/quotes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ price, etaMinutes, scheduledDate, note: note || undefined })
+    body: JSON.stringify({ price, scheduledAt, note: note || undefined })
   });
   await reload();
   setBusy(false);
 }
 
 // [기능] 오늘 날짜를 <input type="date"> 값 형식(YYYY-MM-DD)으로 반환 - 방문 예정일 기본값
-function todayInputValue() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+function todayInputValue(base: Date = new Date()) {
+  const offset = base.getTimezoneOffset() * 60000;
+  return new Date(base.getTime() - offset).toISOString().slice(0, 10);
+}
+
+// [기능] 현재 시각을 <input type="time"> 값 형식(HH:mm, 24시간제)으로 반환 - 도착 예정 시각 기본값
+function nowTimeValue(base: Date = new Date()) {
+  return `${String(base.getHours()).padStart(2, "0")}:${String(base.getMinutes()).padStart(2, "0")}`;
 }
 
 // [디자인] 입찰 제안 입력 카드 - 신규 요청 카드 자체이거나(펼치기 전),
@@ -241,21 +239,23 @@ function BidCard({
   busy: boolean;
   revise?: boolean;
   editingQuote?: Quote;
-  onSubmit: (price: number, etaMinutes: number, scheduledDate: string, note: string) => void;
+  onSubmit: (price: number, scheduledAt: string, note: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [price, setPrice] = useState(editingQuote ? String(editingQuote.price) : "");
-  const [eta, setEta] = useState(editingQuote ? String(editingQuote.etaMinutes) : "");
-  const [scheduledDate, setScheduledDate] = useState(
-    editingQuote ? editingQuote.scheduledDate.slice(0, 10) : todayInputValue()
-  );
+  const editingAt = editingQuote ? new Date(editingQuote.scheduledAt) : null;
+  const [scheduledDate, setScheduledDate] = useState(editingAt ? todayInputValue(editingAt) : todayInputValue());
+  const [scheduledTime, setScheduledTime] = useState(editingAt ? nowTimeValue(editingAt) : nowTimeValue());
   const [note, setNote] = useState(editingQuote?.note ?? "");
 
   function submit() {
     const p = Number(price);
-    const e = Number(eta);
-    if (!p || !e || !scheduledDate) return;
-    onSubmit(p, e, scheduledDate, note);
+    if (!p || !scheduledDate || !scheduledTime) return;
+    // [기능] 날짜(YYYY-MM-DD) + 시각(HH:mm)을 하나의 절대 일시로 합쳐서 전송합니다.
+    // 타임존 표시가 없는 문자열은 브라우저가 "현지 시각"으로 해석하므로,
+    // 기사가 입력한 그대로의 시각이 그대로 저장됩니다.
+    const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
+    onSubmit(p, scheduledAt, note);
     setOpen(false);
   }
 
@@ -264,12 +264,12 @@ function BidCard({
       <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">
         <BidFields
           price={price}
-          eta={eta}
           scheduledDate={scheduledDate}
+          scheduledTime={scheduledTime}
           note={note}
           setPrice={setPrice}
-          setEta={setEta}
           setScheduledDate={setScheduledDate}
+          setScheduledTime={setScheduledTime}
           setNote={setNote}
         />
         <button disabled={busy} onClick={submit} className="w-full rounded-md bg-brand text-white py-2 text-sm font-medium disabled:opacity-60">
@@ -297,12 +297,12 @@ function BidCard({
         <div className="space-y-2">
           <BidFields
             price={price}
-            eta={eta}
             scheduledDate={scheduledDate}
+            scheduledTime={scheduledTime}
             note={note}
             setPrice={setPrice}
-            setEta={setEta}
             setScheduledDate={setScheduledDate}
+            setScheduledTime={setScheduledTime}
             setNote={setNote}
           />
           <button disabled={busy} onClick={submit} className="w-full rounded-md bg-brand text-white py-2 text-sm font-medium disabled:opacity-60">
@@ -318,56 +318,59 @@ function BidCard({
   );
 }
 
-// [디자인] 가격 / 방문 예정일 / 도착예정시간 / 메모 입력 필드
+// [디자인] 가격 / 방문 예정일 / 도착 예정 시각(24시간제) / 메모 입력 필드.
+// 방문 예정일 기본값은 오늘이고, 시각은 항상 24시간제(HH:mm) 입력이라
+// 당일이든 며칠 뒤든 정확히 몇 시에 도착할지 정할 수 있습니다.
 function BidFields({
   price,
-  eta,
   scheduledDate,
+  scheduledTime,
   note,
   setPrice,
-  setEta,
   setScheduledDate,
+  setScheduledTime,
   setNote
 }: {
   price: string;
-  eta: string;
   scheduledDate: string;
+  scheduledTime: string;
   note: string;
   setPrice: (v: string) => void;
-  setEta: (v: string) => void;
   setScheduledDate: (v: string) => void;
+  setScheduledTime: (v: string) => void;
   setNote: (v: string) => void;
 }) {
   return (
     <>
+      <input
+        type="number"
+        inputMode="numeric"
+        value={price}
+        onChange={(e) => setPrice(e.target.value)}
+        placeholder="견적가 (원)"
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+      />
       <div className="flex gap-2">
-        <input
-          type="number"
-          inputMode="numeric"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder="견적가 (원)"
-          className="w-1/2 rounded-md border border-gray-300 px-3 py-2 text-sm"
-        />
-        <input
-          type="number"
-          inputMode="numeric"
-          value={eta}
-          onChange={(e) => setEta(e.target.value)}
-          placeholder="도착 예정(분)"
-          className="w-1/2 rounded-md border border-gray-300 px-3 py-2 text-sm"
-        />
+        <label className="block w-1/2 text-xs text-gray-500">
+          방문 예정일
+          <input
+            type="date"
+            value={scheduledDate}
+            min={todayInputValue()}
+            onChange={(e) => setScheduledDate(e.target.value)}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
+          />
+        </label>
+        <label className="block w-1/2 text-xs text-gray-500">
+          도착 예정 시각
+          <input
+            type="time"
+            value={scheduledTime}
+            onChange={(e) => setScheduledTime(e.target.value)}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
+          />
+        </label>
       </div>
-      <label className="block text-xs text-gray-500">
-        방문 예정일
-        <input
-          type="date"
-          value={scheduledDate}
-          min={todayInputValue()}
-          onChange={(e) => setScheduledDate(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
-        />
-      </label>
       <input
         value={note}
         onChange={(e) => setNote(e.target.value)}

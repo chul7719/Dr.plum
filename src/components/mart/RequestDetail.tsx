@@ -8,13 +8,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MobileHeader } from "@/components/MobileHeader";
-import { fmtWon, fmtMinutesLeft, fmtDate, TIMELINE_STEPS } from "@/lib/format";
+import { fmtWon, fmtArrival, TIMELINE_STEPS } from "@/lib/format";
 
 type Quote = {
   id: string;
   price: number;
-  etaMinutes: number;
-  scheduledDate: string;
+  scheduledAt: string;
   note: string | null;
   vendor: { name: string; ratingAvg: number };
 };
@@ -93,7 +92,6 @@ export function RequestDetail({ id }: { id: string }) {
   }
 
   const step = data.timelineEvents.length - 1; // 0~4
-  const departedEvent = data.timelineEvents.find((e) => e.step === "기사 출발");
 
   return (
     <div>
@@ -124,7 +122,7 @@ export function RequestDetail({ id }: { id: string }) {
               )}
               <p className="text-sm font-semibold">{q.vendor.name}</p>
               <p className="text-xs text-gray-500 mt-1">
-                ★ {q.vendor.ratingAvg.toFixed(1)} · {fmtDate(q.scheduledDate)} 방문 · 도착 {q.etaMinutes}분
+                ★ {q.vendor.ratingAvg.toFixed(1)} · {fmtArrival(q.scheduledAt, now)}
               </p>
               {q.note && <p className="text-xs text-gray-500 mt-1">&ldquo;{q.note}&rdquo;</p>}
               <p className="text-lg font-bold mt-2 mb-3">{fmtWon(q.price)}</p>
@@ -153,11 +151,9 @@ export function RequestDetail({ id }: { id: string }) {
                 {data.equipmentType} · {data.symptom}
               </p>
             </div>
-            {/* [기능] 실시간 ETA - 출발했지만 아직 도착 전일 때만 카운트다운 표시 */}
-            {departedEvent && data.timelineEvents.length === 2 && data.selectedQuote && (
-              <span className="text-xs font-semibold text-brand text-right">
-                {fmtMinutesLeft(departedEvent.occurredAt, data.selectedQuote.etaMinutes, now)}
-              </span>
+            {/* [기능] 실시간 ETA - 선정 이후 현장 도착 전까지 기사가 제안한 방문 예정 일시를 계속 계산해서 보여줌 */}
+            {step < 2 && data.selectedQuote && (
+              <span className="text-xs font-semibold text-brand text-right">{fmtArrival(data.selectedQuote.scheduledAt, now)}</span>
             )}
           </div>
 
