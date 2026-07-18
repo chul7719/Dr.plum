@@ -35,7 +35,7 @@ export function fmtArrival(scheduledAt: Date | string, now: Date = new Date()) {
 export const STATUS_LABEL: Record<string, string> = {
   QUOTING: "견적 대기",
   ACCEPTED: "업체 선정",
-  IN_PROGRESS: "수리 중",
+  IN_PROGRESS: "진행중",
   COMPLETED: "완료 대기",
   PAID: "정산 완료"
 };
