@@ -1,4 +1,5 @@
 // [디자인] 로그인 페이지 - 중앙 정렬 카드 + 하단 테스트 계정 안내 박스
+import Link from "next/link";
 import { LoginForm } from "@/components/LoginForm";
 
 export default function LoginPage() {
@@ -10,6 +11,13 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 mt-1">마트 설비 유지보수 매칭 플랫폼</p>
         </div>
         <LoginForm />
+
+        <p className="text-center text-sm text-gray-500 mt-4">
+          계정이 없으신가요?{" "}
+          <Link href="/signup" className="text-brand font-medium">
+            회원가입
+          </Link>
+        </p>
 
         <div className="mt-8 rounded-lg border border-gray-200 bg-white p-4 text-xs text-gray-500 leading-relaxed">
           <p className="font-medium text-gray-700 mb-1">테스트 계정 (비밀번호 공통: password123)</p>

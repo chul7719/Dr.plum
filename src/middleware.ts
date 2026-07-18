@@ -15,10 +15,12 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-  const isLoginPage = pathname.startsWith("/login");
+  // [기능] 회원가입 페이지도 로그인 페이지와 동일하게: 비로그인 상태는 통과,
+  // 이미 로그인된 상태면 자기 역할 홈으로 돌려보냅니다.
+  const isPublicAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
 
   if (!token) {
-    if (isLoginPage) return NextResponse.next();
+    if (isPublicAuthPage) return NextResponse.next();
     const loginUrl = new URL("/login", req.url);
     return NextResponse.redirect(loginUrl);
   }
@@ -26,7 +28,7 @@ export async function middleware(req: NextRequest) {
   const role = token.role as string;
   const home = ROLE_HOME[role] ?? "/login";
 
-  if (isLoginPage) {
+  if (isPublicAuthPage) {
     return NextResponse.redirect(new URL(home, req.url));
   }
 
@@ -44,5 +46,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/mart/:path*", "/technician/:path*", "/hq/:path*", "/login"]
+  matcher: ["/", "/mart/:path*", "/technician/:path*", "/hq/:path*", "/login", "/signup"]
 };
