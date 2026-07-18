@@ -6,6 +6,7 @@ import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fmtWon, STATUS_LABEL, STATUS_BADGE_CLASS } from "@/lib/format";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export default async function HQPage() {
   const session = await getServerSession(authOptions);
@@ -36,12 +37,15 @@ export default async function HQPage() {
           <h1 className="text-xl font-semibold">본사 대시보드</h1>
           {organization && <p className="text-xs text-gray-500 mt-0.5">{organization.name}</p>}
         </div>
-        <Link
-          href="/hq/settlements"
-          className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5"
-        >
-          정산 관리
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/hq/settlements"
+            className="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5"
+          >
+            정산 관리
+          </Link>
+          <LogoutButton />
+        </div>
       </div>
 
       {/* [디자인] 지표 카드 4개 - 모바일 2열 / PC 4열 그리드 */}
