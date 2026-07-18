@@ -37,6 +37,13 @@ type RequestData = {
 // 이 주기 내로 매장 화면에 자동 반영됩니다.
 const POLL_INTERVAL_MS = 5000;
 
+// [기능] 타임라인 단계(step index)별로 매장에 보여줄 상태 문구.
+// 지금은 "기사 출발"(index 1: 출발했어요 클릭 후 ~ 현장 도착 전) 구간만
+// "기사이동중"으로 지정돼 있습니다. 나머지 구간 문구는 계속 정리될 예정입니다.
+const STEP_STATUS_BADGE: Record<number, string> = {
+  1: "기사이동중"
+};
+
 export function RequestDetail({ id }: { id: string }) {
   const router = useRouter();
   const [data, setData] = useState<RequestData | null>(null);
@@ -146,7 +153,15 @@ export function RequestDetail({ id }: { id: string }) {
               {data.selectedQuote?.vendor.name.slice(0, 2)}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold">{data.selectedQuote?.vendor.name} 기사</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold">{data.selectedQuote?.vendor.name} 기사</p>
+                {/* [기능] 타임라인 단계별 상태 문구 - 기사가 "출발했어요"를 누른 직후(현장 도착 전) 구간 */}
+                {STEP_STATUS_BADGE[step] && (
+                  <span className="text-xs font-semibold bg-red-50 text-red-600 px-2 py-0.5 rounded-full">
+                    {STEP_STATUS_BADGE[step]}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-500">
                 {data.equipmentType} · {data.symptom}
               </p>
@@ -167,7 +182,9 @@ export function RequestDetail({ id }: { id: string }) {
                 />
                 <div>
                   <p className="text-sm font-medium">{label}</p>
-                  {i === step && i < 3 && <p className="text-xs text-gray-500">진행 중 · 자동 갱신됨</p>}
+                  {i === step && i < 3 && (
+                    <p className="text-xs text-gray-500">{STEP_STATUS_BADGE[i] ?? "진행 중"} · 자동 갱신됨</p>
+                  )}
                 </div>
               </div>
             ))}
