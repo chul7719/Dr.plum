@@ -4,12 +4,16 @@
 // 여기서 등록한 업체는 이 본사 소속 매장의 요청에만 입찰할 수 있습니다
 // (공용 마켓플레이스 업체와 달리 다른 프랜차이즈 요청에는 안 보임).
 import { useEffect, useState } from "react";
+import { VendorRegionPicker, type PickedRegion } from "@/components/hq/VendorRegionPicker";
+
+const LEVEL_LABEL: Record<string, string> = { SIDO: "도", SGG: "구/시", DONG: "동" };
 
 type Vendor = {
   id: string;
   name: string;
   ratingAvg: number;
   technicians: { id: string; name: string; email: string }[];
+  regions: { id: string; level: string; code: string; label: string }[];
 };
 
 export function VendorList() {
@@ -75,6 +79,30 @@ export function VendorList() {
     if (!res.ok) {
       const data = await res.json();
       setError(data.error ?? "삭제에 실패했습니다.");
+    }
+    await load();
+    setBusy(false);
+  }
+
+  async function addRegion(vendorId: string, region: PickedRegion) {
+    const res = await fetch(`/api/vendors/${vendorId}/regions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(region)
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "지역 추가에 실패했습니다.");
+    }
+    await load();
+  }
+
+  async function removeRegion(vendorId: string, regionId: string) {
+    setBusy(true);
+    const res = await fetch(`/api/vendors/${vendorId}/regions/${regionId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "지역 삭제에 실패했습니다.");
     }
     await load();
     setBusy(false);
@@ -155,6 +183,31 @@ export function VendorList() {
                 </div>
               </div>
             )}
+
+            {/* [디자인] 서비스 지역 - 도/시/군/구/동 어느 단위든 여러 개 중복 등록 가능 */}
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {v.regions.length === 0 && <p className="text-xs text-gray-400">등록된 서비스 지역이 없습니다.</p>}
+                {v.regions.map((r) => (
+                  <span
+                    key={r.id}
+                    className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs rounded-full pl-2 pr-1 py-1"
+                  >
+                    <span className="text-gray-400">{LEVEL_LABEL[r.level]}</span>
+                    {r.label}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => removeRegion(v.id, r.id)}
+                      className="w-4 h-4 rounded-full hover:bg-gray-300 leading-none disabled:opacity-40"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <VendorRegionPicker existing={v.regions} onAdd={(region) => addRegion(v.id, region)} />
+            </div>
           </div>
         ))}
       </div>

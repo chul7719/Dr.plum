@@ -57,10 +57,11 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { equipmentType, symptom, urgent } = body as {
+  const { equipmentType, symptom, urgent, region } = body as {
     equipmentType: string;
     symptom: string;
     urgent: boolean;
+    region?: string;
   };
 
   if (!equipmentType || !symptom) {
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
       equipmentType,
       symptom,
       urgent: !!urgent,
+      region: region || null,
       status: "QUOTING",
       timelineEvents: { create: [{ step: "요청 접수" }] }
     },

@@ -13,6 +13,7 @@ type RequestSummary = {
   symptom: string;
   urgent: boolean;
   status: string;
+  region: string | null;
   store: { name: string };
   timelineEvents: { step: string }[];
 };
@@ -66,6 +67,7 @@ export function MartRequestList() {
                 {r.symptom}
                 {r.urgent && <span className="ml-1 text-red-600 font-medium">· 긴급</span>}
               </p>
+              {r.region && <p className="text-xs text-gray-400 mt-0.5">📍 {r.region}</p>}
             </div>
             <span className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_BADGE_CLASS[r.status]}`}>
               {getPhaseLabel(r.status, r.timelineEvents.length)}

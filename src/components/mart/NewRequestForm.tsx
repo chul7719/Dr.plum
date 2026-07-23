@@ -9,12 +9,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { MobileHeader } from "@/components/MobileHeader";
+import { RegionPicker } from "@/components/RegionPicker";
 
 export function NewRequestForm() {
   const router = useRouter();
   const [equipmentTypes, setEquipmentTypes] = useState<string[] | null>(null);
   const [equipmentType, setEquipmentType] = useState("");
   const [symptom, setSymptom] = useState("");
+  const [region, setRegion] = useState("");
   const [urgent, setUrgent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -37,7 +39,7 @@ export function NewRequestForm() {
     const res = await fetch("/api/requests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ equipmentType, symptom, urgent })
+      body: JSON.stringify({ equipmentType, symptom, urgent, region: region || undefined })
     });
 
     setLoading(false);
@@ -81,6 +83,8 @@ export function NewRequestForm() {
             />
           )}
         </label>
+
+        <RegionPicker value={region} onChange={setRegion} />
 
         <label className="block text-sm text-gray-600">
           증상

@@ -14,7 +14,10 @@ export async function GET() {
 
   const vendors = await prisma.vendor.findMany({
     where: { organizationId: session.user.organizationId },
-    include: { technicians: { select: { id: true, name: true, email: true } } },
+    include: {
+      technicians: { select: { id: true, name: true, email: true } },
+      regions: { orderBy: { createdAt: "asc" } }
+    },
     orderBy: { createdAt: "desc" }
   });
 

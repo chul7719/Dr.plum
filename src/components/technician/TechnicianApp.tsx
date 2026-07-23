@@ -26,6 +26,7 @@ type RequestItem = {
   symptom: string;
   urgent: boolean;
   status: string;
+  region: string | null;
   store: { name: string };
   quotes: Quote[];
   selectedQuote: Quote | null;
@@ -146,6 +147,7 @@ export function TechnicianApp() {
                   {r.symptom}
                   {r.urgent && <span className="ml-1 text-red-600 font-medium">· 긴급</span>}
                 </p>
+                {r.region && <p className="text-xs text-gray-400 mb-2">📍 {r.region}</p>}
                 <p className="text-sm font-bold">
                   {fmtWon(myQuote.price)} · {fmtScheduledAt(myQuote.scheduledAt)}
                 </p>
@@ -188,6 +190,7 @@ export function TechnicianApp() {
                 {r.symptom}
                 {r.urgent && <span className="ml-1 text-red-600 font-medium">· 긴급</span>}
               </p>
+              {r.region && <p className="text-xs text-gray-400 mt-0.5">📍 {r.region}</p>}
               <div className="flex items-center justify-between mt-2">
                 <p className="text-sm font-bold">{r.selectedQuote && fmtWon(r.selectedQuote.price)}</p>
                 {r.review && (
@@ -303,7 +306,10 @@ function BidCard({
         </p>
         {request.urgent && <span className="text-xs font-semibold text-red-600">긴급</span>}
       </div>
-      <p className="text-xs text-gray-500 mt-1 mb-3">{request.symptom}</p>
+      <div className="mt-1 mb-3">
+        <p className="text-xs text-gray-500">{request.symptom}</p>
+        {request.region && <p className="text-xs text-gray-400 mt-0.5">📍 {request.region}</p>}
+      </div>
 
       {open ? (
         <div className="space-y-2">
@@ -413,10 +419,13 @@ function ProgressCard({
         </p>
         <span className="text-xs text-gray-500">{getPhaseLabel(request.status, request.timelineEvents.length)}</span>
       </div>
-      <p className="text-xs text-gray-500 mb-3">
-        {request.symptom}
-        {request.urgent && <span className="ml-1 text-red-600 font-medium">· 긴급</span>}
-      </p>
+      <div className="mb-3">
+        <p className="text-xs text-gray-500">
+          {request.symptom}
+          {request.urgent && <span className="ml-1 text-red-600 font-medium">· 긴급</span>}
+        </p>
+        {request.region && <p className="text-xs text-gray-400 mt-0.5">📍 {request.region}</p>}
+      </div>
 
       {/* [기능] 실시간 위치·ETA - 출발/도착 버튼이 곧 GPS 이벤트를 대체하는 트리거입니다 */}
       {request.status === "ACCEPTED" && (

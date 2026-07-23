@@ -24,6 +24,7 @@ type RequestData = {
   symptom: string;
   urgent: boolean;
   status: string;
+  region: string | null;
   store: { name: string };
   quotes: Quote[];
   selectedQuote: Quote | null;
@@ -104,7 +105,10 @@ export function RequestDetail({ id }: { id: string }) {
           </p>
           {data.urgent && <span className="text-xs font-semibold text-red-600">긴급</span>}
         </div>
-        <p className="text-xs text-gray-500 mt-1">{data.store.name}</p>
+        <p className="text-xs text-gray-500 mt-1">
+          {data.store.name}
+          {data.region && ` · 📍 ${data.region}`}
+        </p>
       </div>
 
       {/* [디자인] 견적(입찰) 비교 - 협력업체들이 보낸 제안을 가격순으로 나열 */}

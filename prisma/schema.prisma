@@ -70,7 +70,32 @@ model Vendor {
   organizationId String?
   technicians    User[]
   quotes         Quote[]
+  regions        VendorRegion[]
   createdAt      DateTime      @default(now())
+}
+
+// [기능] 협력업체 서비스 지역 - 업체가 실제로 커버하는 지역을 도/시/군/구/동
+// 어느 단위로든, 여러 개 중복해서 등록할 수 있습니다 (업체가 여러 지역에
+// 걸쳐 있는 경우가 많아서). 예: "경기도" 통짜 + "서울특별시 강남구"처럼
+// 서로 다른 단위가 겹쳐서 등록돼도 됩니다. code는 그 단위의 행정구역 코드
+// (시/도 2자리, 시/군/구 5자리, 동 8자리), label은 화면 표시용 전체 이름
+// (예: "서울특별시 강남구 역삼1동").
+enum RegionLevel {
+  SIDO
+  SGG
+  DONG
+}
+
+model VendorRegion {
+  id        String      @id @default(cuid())
+  vendor    Vendor      @relation(fields: [vendorId], references: [id])
+  vendorId  String
+  level     RegionLevel
+  code      String
+  label     String
+  createdAt DateTime    @default(now())
+
+  @@unique([vendorId, level, code])
 }
 
 model User {
@@ -135,6 +160,12 @@ model Request {
   symptom       String
   urgent        Boolean       @default(false)
   status        RequestStatus @default(QUOTING)
+
+  // [기능] 지역(동네) 설정 - 당근마켓 동네설정처럼, 요청 등록 시 카카오 우편번호
+  // 서비스(react-daum-postcode)로 검색한 주소에서 "시/도 시/군/구 동" 형태로
+  // 뽑아 저장합니다 (예: "서울 강남구 역삼동"). 기사 쪽에서 출동 거리를
+  // 가늠할 수 있도록 목록·상세 화면에 함께 노출합니다.
+  region String?
 
   quotes          Quote[] @relation("RequestQuotes")
   selectedQuote   Quote?  @relation("SelectedQuote", fields: [selectedQuoteId], references: [id])
